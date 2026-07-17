@@ -7,6 +7,16 @@ import { WorkerProfile } from "@/lib/types";
 // Auth-gated, per-request data — never attempt static prerendering.
 export const dynamic = "force-dynamic";
 
+// TEMPORARY — remove alongside the debug blocks once diagnosed.
+function serializeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}\n${err.stack ?? ""}`;
+  try {
+    return JSON.stringify(err, Object.getOwnPropertyNames(err as object), 2);
+  } catch {
+    return String(err);
+  }
+}
+
 export default async function PanelAppLayout({ children }: { children: React.ReactNode }) {
   if (!isSupabaseConfigured) {
     return (
@@ -27,7 +37,7 @@ export default async function PanelAppLayout({ children }: { children: React.Rea
     const supabase = await createClient();
     worker = await getCurrentWorker(supabase);
   } catch (err) {
-    debugError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    debugError = serializeError(err);
   }
 
   // TEMPORARY diagnostic — remove once the Vercel deployment issue is found.

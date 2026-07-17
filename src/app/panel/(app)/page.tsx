@@ -3,6 +3,16 @@ import { getAuctions } from "@/lib/queries/auctions";
 import { getCars } from "@/lib/queries/cars";
 import { getSupportChats } from "@/lib/queries/support";
 
+// TEMPORARY — remove alongside the debug block once diagnosed.
+function serializeError(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}\n${err.stack ?? ""}`;
+  try {
+    return JSON.stringify(err, Object.getOwnPropertyNames(err as object), 2);
+  } catch {
+    return String(err);
+  }
+}
+
 export default async function PanelDashboardPage() {
   // The parent layout renders a "not connected" screen instead of {children}
   // when Supabase isn't configured, but Next still evaluates this page's
@@ -22,7 +32,7 @@ export default async function PanelDashboardPage() {
       getSupportChats(supabase),
     ]);
   } catch (err) {
-    debugError = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
+    debugError = serializeError(err);
   }
 
   // TEMPORARY diagnostic — remove once the Vercel deployment issue is found.
