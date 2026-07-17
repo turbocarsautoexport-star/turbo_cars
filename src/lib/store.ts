@@ -3,23 +3,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { AccessCode, Auction, Bid } from "./types";
-import { BASE_STATS, TESTIMONIALS } from "./mockData";
-import { fetchInitialAuctions } from "./dataSource";
-
-interface NewAuctionInput {
-  title: string;
-  brand: string;
-  year: number;
-  mileageKm: number;
-  transmission: Auction["transmission"];
-  fuel: Auction["fuel"];
-  city: string;
-  description: string;
-  startPrice: number;
-  bidStep: number;
-  durationMinutes: number;
-  startDelayMinutes: number;
-}
+import { BASE_STATS, createSeedAuctions, TESTIMONIALS } from "./mockData";
+import { createClient, isSupabaseConfigured } from "./supabase/client";
+import * as auctionsApi from "./queries/auctions";
 
 export type RedeemResult = "ok" | "invalid" | "used";
 
@@ -34,30 +20,12 @@ interface TurboStore {
 
   init: () => Promise<void>;
   tick: () => void;
-  simulateRandomBid: () => void;
-  placeBid: (auctionId: string, bidderName: string, amount?: number) => void;
+  placeBid: (auctionId: string, bidderName: string, amount?: number) => Promise<void>;
+  redeemCode: (auctionId: string, code: string) => Promise<RedeemResult>;
 
-  adminCloseAuction: (auctionId: string) => void;
-  adminStartAuction: (auctionId: string) => void;
-  adminSetTimerMinutes: (auctionId: string, minutes: number) => void;
-  adminCreateAuction: (input: NewAuctionInput) => void;
-  adminSetDeposit: (auctionId: string, requiresDeposit: boolean, depositAmount: number) => void;
-  adminGenerateCode: (auctionId: string, holderName?: string) => string;
-
-  redeemCode: (auctionId: string, code: string) => RedeemResult;
-}
-
-let bidCounter = 0;
-let codeCounter = 0;
-
-const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
-
-function generateCodeString(): string {
-  let out = "";
-  for (let i = 0; i < 6; i++) {
-    out += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-  }
-  return out;
+  /** Merges a live change pushed by Supabase Realtime into local state. */
+  upsertBid: (bid: Bid & { auctionId: string }) => void;
+  upsertAuctionFromRealtime: (auction: Partial<Auction> & { id: string }) => void;
 }
 
 export const useTurboStore = create<TurboStore>()(
@@ -74,29 +42,31 @@ export const useTurboStore = create<TurboStore>()(
       init: async () => {
         if (get().initialized) return;
         const now = Date.now();
-        const auctions = await fetchInitialAuctions(now);
 
-        set((state) => {
-          const existingSeeded = new Set(
-            state.accessCodes.filter((c) => c.holderName === "Demo").map((c) => c.auctionId)
-          );
-          const demoCodes: AccessCode[] = auctions
-            .filter((a) => a.requiresDeposit && !existingSeeded.has(a.id))
-            .map((a, i) => ({
-              id: `demo-code-${a.id}`,
-              auctionId: a.id,
-              code: `DEMO${i}${a.id.slice(-1).toUpperCase()}`.slice(0, 8),
-              holderName: "Demo",
-              createdAt: now,
-            }));
+        if (isSupabaseConfigured) {
+          const supabase = createClient();
+          const auctions = await auctionsApi.getAuctions(supabase);
+          set({ now, auctions, initialized: true });
+          return;
+        }
 
-          return {
-            now,
-            auctions,
-            initialized: true,
-            accessCodes: [...state.accessCodes, ...demoCodes],
-          };
-        });
+        // No backend configured yet — demo mode with local mock data.
+        const auctions = createSeedAuctions(now);
+        const demoCodes: AccessCode[] = auctions
+          .filter((a) => a.requiresDeposit)
+          .map((a, i) => ({
+            id: `demo-code-${a.id}`,
+            auctionId: a.id,
+            code: `DEMO${i}${a.id.slice(-1).toUpperCase()}`.slice(0, 8),
+            holderName: "Demo",
+            createdAt: now,
+          }));
+        set((state) => ({
+          now,
+          auctions,
+          initialized: true,
+          accessCodes: [...state.accessCodes, ...demoCodes],
+        }));
       },
 
       tick: () => {
@@ -111,11 +81,7 @@ export const useTurboStore = create<TurboStore>()(
             if (a.status === "live" && now >= a.endAt) {
               changed = true;
               const lastBid = a.bids[a.bids.length - 1];
-              return {
-                ...a,
-                status: "ended" as const,
-                winnerName: lastBid?.bidderName,
-              };
+              return { ...a, status: "ended" as const, winnerName: lastBid?.bidderName };
             }
             return a;
           });
@@ -123,142 +89,47 @@ export const useTurboStore = create<TurboStore>()(
         });
       },
 
-      simulateRandomBid: () => {
-        const state = get();
-        const liveAuctions = state.auctions.filter((a) => a.status === "live");
-        if (liveAuctions.length === 0) return;
-        const target = liveAuctions[Math.floor(Math.random() * liveAuctions.length)];
-        const names = [
-          "Aziz K.",
-          "Diyor R.",
-          "Malika Y.",
-          "Shahzod T.",
-          "Kamola N.",
-          "Bobur A.",
-          "Nodira S.",
-          "Jasur M.",
-          "Sevara Q.",
-          "Otabek I.",
-        ];
-        const bidderName = names[Math.floor(Math.random() * names.length)];
-        get().placeBid(target.id, bidderName);
-      },
+      placeBid: async (auctionId, bidderName, amount) => {
+        const auction = get().auctions.find((a) => a.id === auctionId);
+        if (!auction || auction.status !== "live") return;
+        const nextAmount = amount ?? auction.currentPrice + auction.bidStep;
 
-      placeBid: (auctionId, bidderName, amount) => {
-        set((state) => ({
-          auctions: state.auctions.map((a) => {
-            if (a.id !== auctionId || a.status !== "live") return a;
-            const nextAmount = amount ?? a.currentPrice + a.bidStep;
-            bidCounter += 1;
-            const bid: Bid = {
-              id: `live-bid-${bidCounter}`,
-              bidderName,
-              amount: nextAmount,
-              createdAt: Date.now(),
-            };
-            return {
-              ...a,
-              currentPrice: nextAmount,
-              bids: [...a.bids, bid],
-            };
-          }),
-        }));
-      },
-
-      adminCloseAuction: (auctionId) => {
-        set((state) => ({
-          auctions: state.auctions.map((a) => {
-            if (a.id !== auctionId || a.status !== "live") return a;
-            const lastBid = a.bids[a.bids.length - 1];
-            return {
-              ...a,
-              status: "ended" as const,
-              endAt: Date.now(),
-              winnerName: lastBid?.bidderName,
-            };
-          }),
-        }));
-      },
-
-      adminStartAuction: (auctionId) => {
-        set((state) => ({
-          auctions: state.auctions.map((a) => {
-            if (a.id !== auctionId || a.status !== "upcoming") return a;
-            const now = Date.now();
-            const duration = a.endAt - a.startAt;
-            return {
-              ...a,
-              status: "live" as const,
-              startAt: now,
-              endAt: now + duration,
-            };
-          }),
-        }));
-      },
-
-      adminSetTimerMinutes: (auctionId, minutes) => {
-        set((state) => ({
-          auctions: state.auctions.map((a) => {
-            if (a.id !== auctionId) return a;
-            return { ...a, endAt: Date.now() + minutes * 60_000 };
-          }),
-        }));
-      },
-
-      adminCreateAuction: (input) => {
-        const now = Date.now();
-        const startAt = now + input.startDelayMinutes * 60_000;
-        const endAt = startAt + input.durationMinutes * 60_000;
-        const id = `${input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${now}`;
-        const newAuction: Auction = {
-          id,
-          slug: id,
-          title: input.title,
-          brand: input.brand,
-          year: input.year,
-          mileageKm: input.mileageKm,
-          transmission: input.transmission,
-          fuel: input.fuel,
-          city: input.city,
-          description: input.description,
-          accent: Math.floor(Math.random() * 5),
-          startPrice: input.startPrice,
-          currentPrice: input.startPrice,
-          bidStep: input.bidStep,
-          currency: "so'm",
-          startAt,
-          endAt,
-          status: input.startDelayMinutes <= 0 ? "live" : "upcoming",
-          bids: [],
-          requiresDeposit: false,
-          depositAmount: 0,
-        };
-        set((state) => ({ auctions: [newAuction, ...state.auctions] }));
-      },
-
-      adminSetDeposit: (auctionId, requiresDeposit, depositAmount) => {
-        set((state) => ({
-          auctions: state.auctions.map((a) =>
-            a.id === auctionId ? { ...a, requiresDeposit, depositAmount } : a
-          ),
-        }));
-      },
-
-      adminGenerateCode: (auctionId, holderName) => {
-        codeCounter += 1;
-        const code = generateCodeString();
-        const entry: AccessCode = {
-          id: `code-${Date.now()}-${codeCounter}`,
-          auctionId,
-          code,
-          holderName: holderName?.trim() || undefined,
+        // Optimistic local update so the UI feels instant.
+        const bid: Bid = {
+          id: `local-${Date.now()}`,
+          bidderName,
+          amount: nextAmount,
           createdAt: Date.now(),
         };
-        set((state) => ({ accessCodes: [entry, ...state.accessCodes] }));
-        return code;
+        set((state) => ({
+          auctions: state.auctions.map((a) =>
+            a.id === auctionId
+              ? { ...a, currentPrice: nextAmount, bids: [...a.bids, bid] }
+              : a
+          ),
+        }));
+
+        if (isSupabaseConfigured) {
+          const supabase = createClient();
+          await auctionsApi.placeBid(supabase, auctionId, bidderName, nextAmount);
+        }
       },
 
-      redeemCode: (auctionId, rawCode) => {
+      redeemCode: async (auctionId, rawCode) => {
+        if (isSupabaseConfigured) {
+          const supabase = createClient();
+          const result = await auctionsApi.redeemAccessCode(supabase, auctionId, rawCode);
+          if (result === "ok") {
+            set((s) => ({
+              unlockedAuctions: s.unlockedAuctions.includes(auctionId)
+                ? s.unlockedAuctions
+                : [...s.unlockedAuctions, auctionId],
+            }));
+          }
+          return result;
+        }
+
+        // Demo mode: check against locally-seeded demo codes.
         const code = rawCode.trim().toUpperCase();
         const state = get();
         const match = state.accessCodes.find(
@@ -276,6 +147,26 @@ export const useTurboStore = create<TurboStore>()(
             : [...s.unlockedAuctions, auctionId],
         }));
         return "ok";
+      },
+
+      upsertBid: (bid) => {
+        set((state) => ({
+          auctions: state.auctions.map((a) => {
+            if (a.id !== bid.auctionId) return a;
+            if (a.bids.some((b) => b.id === bid.id)) return a;
+            return {
+              ...a,
+              currentPrice: Math.max(a.currentPrice, bid.amount),
+              bids: [...a.bids, bid],
+            };
+          }),
+        }));
+      },
+
+      upsertAuctionFromRealtime: (patch) => {
+        set((state) => ({
+          auctions: state.auctions.map((a) => (a.id === patch.id ? { ...a, ...patch } : a)),
+        }));
       },
     }),
     {

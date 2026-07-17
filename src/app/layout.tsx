@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Racing_Sans_One, Rajdhani, Manrope } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import RealtimeEngine from "@/components/RealtimeEngine";
+import SupportWidget from "@/components/chat/SupportWidget";
 
 const racing = Racing_Sans_One({
   variable: "--font-racing",
@@ -23,9 +22,9 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "TURBO | Mashinalar bo'yicha kim oshdi savdosi",
+  title: "TURBO | Avtomobil eksporti va kim oshdi savdosi",
   description:
-    "TURBO — real vaqtda o'tkaziladigan mashinalar auksioni. Jonli narx oshishi, taймер bilan boshqariladigan savdolar va ishonchli g'oliblar.",
+    "TURBO — avtomobil eksporti va real vaqtda o'tkaziladigan mashinalar auksioni. Jonli narx oshishi, taймер bilan boshqariladigan savdolar va ishonchli g'oliblar.",
 };
 
 export default function RootLayout({
@@ -40,9 +39,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-turbo-black text-foreground">
         <RealtimeEngine />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <main className="flex flex-1 flex-col">{children}</main>
+        <SupportWidget />
       </body>
     </html>
   );

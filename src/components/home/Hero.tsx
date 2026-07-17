@@ -39,16 +39,16 @@ export default function Hero() {
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
-              href="/auksionlar"
+              href="#barcha-auksionlar"
               className="rounded-full bg-turbo-red px-7 py-3.5 font-condensed text-sm font-bold uppercase tracking-wider text-white shadow-[0_10px_30px_-10px_rgba(246,6,10,0.7)] transition-transform hover:scale-105"
             >
               Jonli savdolarni ko&apos;rish
             </Link>
             <Link
-              href="/admin"
+              href="/panel"
               className="rounded-full border border-turbo-border px-7 py-3.5 font-condensed text-sm font-bold uppercase tracking-wider text-white transition-colors hover:border-turbo-red hover:text-turbo-red"
             >
-              Admin sifatida kirish
+              Ishchilar paneli
             </Link>
           </div>
 

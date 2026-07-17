@@ -7,10 +7,10 @@ import Logo from "./Logo";
 
 const NAV = [
   { href: "/", label: "Bosh sahifa" },
+  { href: "/eksport", label: "Eksport" },
   { href: "/auksionlar", label: "Auksionlar" },
-  { href: "/#statistika", label: "Statistika" },
-  { href: "/#fikrlar", label: "Fikrlar" },
-  { href: "/admin", label: "Admin" },
+  { href: "/#kontakt", label: "Kontakt" },
+  { href: "/panel", label: "Ishchilar paneli" },
 ];
 
 export default function Header() {

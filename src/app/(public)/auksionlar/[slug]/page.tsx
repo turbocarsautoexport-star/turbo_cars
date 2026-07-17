@@ -72,10 +72,10 @@ export default function AuctionDetailPage() {
     (c) => c.auctionId === auction.id && c.holderName === "Demo" && !c.redeemedAt
   );
 
-  function submitCode() {
+  async function submitCode() {
     setCodeError(null);
     if (!auction) return;
-    const result = redeemCode(auction.id, codeInput);
+    const result = await redeemCode(auction.id, codeInput);
     if (result === "invalid") setCodeError("Kod noto'g'ri. Qaytadan tekshirib ko'ring.");
     else if (result === "used") setCodeError("Bu kod allaqachon ishlatilgan.");
     else setCodeInput("");
@@ -97,7 +97,9 @@ export default function AuctionDetailPage() {
       setError(`Taklif kamida ${formatSom(minNext)} bo'lishi kerak.`);
       return;
     }
-    placeBid(auction.id, name.trim(), amount);
+    placeBid(auction.id, name.trim(), amount).catch(() =>
+      setError("Taklifni yuborishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
+    );
     setSuccess("Taklifingiz qabul qilindi!");
     setCustomAmount("");
     setTimeout(() => setSuccess(null), 2500);

@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <Logo size={28} />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-turbo-muted">
-              TURBO — mashinalar bo&apos;yicha real vaqtda o&apos;tkaziladigan
+              TURBO — avtomobil eksporti va real vaqtda o&apos;tkaziladigan
               ishonchli kim oshdi savdosi platformasi.
             </p>
           </div>
@@ -25,13 +25,18 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/eksport" className="hover:text-turbo-red">
+                  Eksport
+                </Link>
+              </li>
+              <li>
                 <Link href="/auksionlar" className="hover:text-turbo-red">
                   Barcha auksionlar
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-turbo-red">
-                  Admin panel
+                <Link href="/panel" className="hover:text-turbo-red">
+                  Ishchilar paneli
                 </Link>
               </li>
             </ul>
@@ -50,12 +55,11 @@ export default function Footer() {
 
           <div>
             <h4 className="font-condensed text-sm font-bold uppercase tracking-wider text-white">
-              Demo eslatma
+              Qo&apos;llab-quvvatlash
             </h4>
             <p className="mt-4 text-sm leading-relaxed text-turbo-muted">
-              Bu versiya frontend-demo bosqichida: ma&apos;lumotlar brauzer
-              xotirasida simulyatsiya qilinadi. Backend ulanganda real
-              foydalanuvchilar va to&apos;lovlar qo&apos;shiladi.
+              Savolingiz bormi? Pastki o&apos;ng burchakdagi chat orqali
+              jamoamizga yozing — tez orada javob beramiz.
             </p>
           </div>
         </div>
