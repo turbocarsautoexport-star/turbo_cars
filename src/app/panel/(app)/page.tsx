@@ -9,12 +9,33 @@ export default async function PanelDashboardPage() {
   // server component either way — guard here too so it doesn't throw.
   if (!isSupabaseConfigured) return null;
 
-  const supabase = await createClient();
-  const [auctions, cars, tickets] = await Promise.all([
-    getAuctions(supabase),
-    getCars(supabase),
-    getSupportChats(supabase),
-  ]);
+  let auctions: Awaited<ReturnType<typeof getAuctions>> = [];
+  let cars: Awaited<ReturnType<typeof getCars>> = [];
+  let tickets: Awaited<ReturnType<typeof getSupportChats>> = [];
+  let debugError: string | null = null;
+
+  try {
+    const supabase = await createClient();
+    [auctions, cars, tickets] = await Promise.all([
+      getAuctions(supabase),
+      getCars(supabase),
+      getSupportChats(supabase),
+    ]);
+  } catch (err) {
+    debugError = err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err);
+  }
+
+  // TEMPORARY diagnostic — remove once the Vercel deployment issue is found.
+  if (debugError) {
+    return (
+      <div>
+        <h1 className="font-display text-xl text-turbo-red">Dashboard error (debug)</h1>
+        <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-turbo-border bg-turbo-surface p-4 text-xs text-white">
+          {debugError}
+        </pre>
+      </div>
+    );
+  }
 
   const stats = [
     { label: "Jonli auksionlar", value: auctions.filter((a) => a.status === "live").length },
