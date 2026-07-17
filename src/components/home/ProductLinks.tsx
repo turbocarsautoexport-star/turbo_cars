@@ -15,6 +15,13 @@ const PRODUCTS = [
     text: "Real vaqtda o'tkaziladigan mashinalar auksioni. Jonli narx oshishi, aniq taймer va shaffof g'oliblar.",
     cta: "Jonli savdolar",
   },
+  {
+    href: "/portal",
+    emoji: "🧭",
+    title: "Mijozlar portali",
+    text: "Yangiliklar, takliflar, valyuta kursi, konteyner va buyurtma kuzatuvi, sharhlar — barchasi bir joyda.",
+    cta: "Portalga o'tish",
+  },
 ];
 
 export default function ProductLinks() {
@@ -27,7 +34,7 @@ export default function ProductLinks() {
         Qaysi bo&apos;lim kerak?
       </h2>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
         {PRODUCTS.map((p) => (
           <Link
             key={p.href}

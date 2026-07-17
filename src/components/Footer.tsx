@@ -35,6 +35,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/portal" className="hover:text-turbo-red">
+                  Mijozlar portali
+                </Link>
+              </li>
+              <li>
                 <Link href="/panel" className="hover:text-turbo-red">
                   Ishchilar paneli
                 </Link>

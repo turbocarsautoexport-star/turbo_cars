@@ -165,3 +165,55 @@ export interface WorkerProfile {
   photoUrl?: string | null;
   createdAt: string;
 }
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export type ContainerCustomsStatus = "pending" | "filed" | "in_progress" | "held" | "cleared";
+export type ContainerStatus = "preparing" | "in_transit" | "arrived" | "cleared";
+
+export interface Container {
+  id: string;
+  containerNumber: string | null;
+  originPort: string;
+  destinationPort: string;
+  departureDate: string | null;
+  arrivalDate: string | null;
+  vesselName: string | null;
+  voyageNumber: string | null;
+  customsStatus: ContainerCustomsStatus;
+  status: ContainerStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Order {
+  id: string;
+  trackingCode: string;
+  guestName: string;
+  carId: string | null;
+  containerId: string | null;
+  statusNote: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderLookup {
+  guestName: string;
+  statusNote: string;
+  updatedAt: string;
+  carModel: string | null;
+  carYear: number | null;
+  carStatus: string | null;
+  containerStatus: string | null;
+  containerOriginPort: string | null;
+  containerDestinationPort: string | null;
+  containerDepartureDate: string | null;
+  containerArrivalDate: string | null;
+  containerVesselName: string | null;
+}

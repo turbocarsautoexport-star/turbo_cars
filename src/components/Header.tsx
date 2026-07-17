@@ -9,6 +9,7 @@ const NAV = [
   { href: "/", label: "Bosh sahifa" },
   { href: "/eksport", label: "Eksport" },
   { href: "/auksionlar", label: "Auksionlar" },
+  { href: "/portal", label: "Mijozlar portali" },
   { href: "/#kontakt", label: "Kontakt" },
   { href: "/panel", label: "Ishchilar paneli" },
 ];

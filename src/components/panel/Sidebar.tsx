@@ -10,10 +10,14 @@ const NAV = [
   { href: "/panel", label: "Bosh sahifa", icon: "📊", exact: true },
   { href: "/panel/cars", label: "Avtomobillar", icon: "🚘" },
   { href: "/panel/auctions", label: "Auksionlar", icon: "🔨" },
+  { href: "/panel/containers", label: "Konteynerlar", icon: "🚢" },
+  { href: "/panel/orders", label: "Buyurtmalar", icon: "🔎" },
+  { href: "/panel/news", label: "Yangiliklar", icon: "📰" },
   { href: "/panel/ads", label: "Reklama", icon: "📣" },
   { href: "/panel/reviews", label: "Sharhlar", icon: "⭐" },
   { href: "/panel/support", label: "Qo'llab-quvvatlash", icon: "💬" },
   { href: "/panel/team", label: "Jamoa", icon: "👥", adminOnly: true },
+  { href: "/panel/settings", label: "Sozlamalar", icon: "⚙️", adminOnly: true },
 ];
 
 export default function Sidebar({ worker }: { worker: WorkerProfile }) {
