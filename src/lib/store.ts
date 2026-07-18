@@ -10,7 +10,6 @@ import * as auctionsApi from "./queries/auctions";
 export type RedeemResult = "ok" | "invalid" | "used";
 
 interface TurboStore {
-  now: number;
   initialized: boolean;
   auctions: Auction[];
   testimonials: typeof TESTIMONIALS;
@@ -19,6 +18,10 @@ interface TurboStore {
   unlockedAuctions: string[];
 
   init: () => Promise<void>;
+  /** Adopts auctions fetched server-side (RSC) so the client skips the initial fetch. */
+  seedAuctions: (auctions: Auction[]) => void;
+  /** Merges a single server-fetched auction (detail page) without marking the list loaded. */
+  seedAuction: (auction: Auction) => void;
   tick: () => void;
   placeBid: (auctionId: string, bidderName: string, amount?: number) => Promise<void>;
   redeemCode: (auctionId: string, code: string) => Promise<RedeemResult>;
@@ -31,7 +34,6 @@ interface TurboStore {
 export const useTurboStore = create<TurboStore>()(
   persist(
     (set, get) => ({
-      now: Date.now(),
       initialized: false,
       auctions: [],
       testimonials: TESTIMONIALS,
@@ -46,7 +48,10 @@ export const useTurboStore = create<TurboStore>()(
         if (isSupabaseConfigured) {
           const supabase = createClient();
           const auctions = await auctionsApi.getAuctions(supabase);
-          set({ now, auctions, initialized: true });
+          // A server-rendered page may have seeded the store while we were
+          // fetching — its data is newer than nothing, so don't clobber it.
+          if (get().initialized) return;
+          set({ auctions, initialized: true });
           return;
         }
 
@@ -62,11 +67,26 @@ export const useTurboStore = create<TurboStore>()(
             createdAt: now,
           }));
         set((state) => ({
-          now,
           auctions,
           initialized: true,
           accessCodes: [...state.accessCodes, ...demoCodes],
         }));
+      },
+
+      seedAuctions: (auctions) => {
+        if (get().initialized) return;
+        set({ auctions, initialized: true });
+      },
+
+      seedAuction: (auction) => {
+        set((state) => {
+          const exists = state.auctions.some((a) => a.id === auction.id);
+          return {
+            auctions: exists
+              ? state.auctions.map((a) => (a.id === auction.id ? auction : a))
+              : [...state.auctions, auction],
+          };
+        });
       },
 
       tick: () => {
@@ -85,7 +105,9 @@ export const useTurboStore = create<TurboStore>()(
             }
             return a;
           });
-          return { now, auctions: changed ? auctions : state.auctions };
+          // Returning the unchanged state skips notifying subscribers, so the
+          // 1s tick no longer re-renders anything unless a status flipped.
+          return changed ? { auctions } : state;
         });
       },
 

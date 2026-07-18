@@ -144,6 +144,8 @@ export interface SupportMessage {
 
 export interface SupportChat {
   id: string;
+  /** Present on staff-side reads; used to address realtime notifications to the guest. */
+  ticketCode?: string;
   guestName: string;
   status: SupportChatStatus;
   claimedBy?: string | null;

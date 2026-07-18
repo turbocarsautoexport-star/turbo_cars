@@ -75,12 +75,14 @@ export default function PanelSupportPage() {
     if (!me) return;
     const supabase = createClient();
     await supportApi.claimTicket(supabase, chat.id, me.id);
+    if (chat.ticketCode) supportApi.notifyTicketUpdated(supabase, chat.ticketCode);
     await refreshChats();
   }
 
   async function close(chat: SupportChat) {
     const supabase = createClient();
     await supportApi.closeTicket(supabase, chat.id);
+    if (chat.ticketCode) supportApi.notifyTicketUpdated(supabase, chat.ticketCode);
     await refreshChats();
   }
 
@@ -90,6 +92,7 @@ export default function PanelSupportPage() {
     const supabase = createClient();
     await supportApi.replyToTicket(supabase, selectedId, reply.trim());
     setReply("");
+    if (selected?.ticketCode) supportApi.notifyTicketUpdated(supabase, selected.ticketCode);
     await refreshMessages(selectedId);
   }
 

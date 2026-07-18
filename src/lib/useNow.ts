@@ -1,0 +1,18 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/**
+ * Local ticking clock. Each consumer re-renders only itself on its own
+ * interval, instead of every subscriber re-rendering off a global store tick.
+ */
+export function useNow(intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+
+  return now;
+}

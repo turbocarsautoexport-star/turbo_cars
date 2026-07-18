@@ -61,6 +61,7 @@ export async function sendGuestMessage(
 
 interface ChatRow {
   id: string;
+  ticket_code: string;
   guest_name: string;
   status: SupportChatStatus;
   claimed_by: string | null;
@@ -72,6 +73,7 @@ interface ChatRow {
 function mapChat(row: ChatRow): SupportChat {
   return {
     id: row.id,
+    ticketCode: row.ticket_code,
     guestName: row.guest_name,
     status: row.status,
     claimedBy: row.claimed_by,
@@ -79,6 +81,32 @@ function mapChat(row: ChatRow): SupportChat {
     closedAt: row.closed_at,
     satisfaction: row.satisfaction,
   };
+}
+
+/** Channel the guest widget listens on for instant updates to their ticket. */
+export function supportTicketChannel(ticketCode: string): string {
+  return `support:${ticketCode.toUpperCase()}`;
+}
+
+/**
+ * Best-effort broadcast poke telling the guest widget to refetch. The guest
+ * (anon) has no RLS access to support tables, so postgres_changes can't reach
+ * them — broadcast is the only realtime path. Losing a poke is fine: the
+ * widget keeps a slow fallback poll.
+ */
+export async function notifyTicketUpdated(
+  supabase: SupabaseClient,
+  ticketCode: string
+): Promise<void> {
+  const channel = supabase.channel(supportTicketChannel(ticketCode));
+  try {
+    // send() without subscribe() goes over HTTP — no socket kept open.
+    await channel.send({ type: "broadcast", event: "update", payload: {} });
+  } catch {
+    // Fallback poll on the guest side covers a lost poke.
+  } finally {
+    supabase.removeChannel(channel);
+  }
 }
 
 export async function getSupportChats(supabase: SupabaseClient): Promise<SupportChat[]> {

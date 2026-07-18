@@ -7,7 +7,9 @@ import * as supportApi from "@/lib/queries/support";
 import { SupportChat } from "@/lib/types";
 
 const STORAGE_KEY = "turbo-support-ticket-code";
-const POLL_MS = 4000;
+// Staff replies arrive instantly over a Realtime broadcast; this slow poll is
+// only a safety net for a missed broadcast or a dropped socket.
+const FALLBACK_POLL_MS = 30_000;
 
 export default function SupportWidget() {
   const pathname = usePathname();
@@ -28,20 +30,29 @@ export default function SupportWidget() {
     if (!open || !ticketCode || !isSupabaseConfigured) return;
 
     let cancelled = false;
-    async function poll() {
+    const supabase = createClient();
+    async function refresh() {
       try {
-        const supabase = createClient();
         const result = await supportApi.getSupportTicket(supabase, ticketCode!);
         if (!cancelled) setChat(result);
       } catch {
-        // transient network errors are fine to ignore on a poll loop
+        // transient network errors are fine to ignore here
       }
     }
-    poll();
-    const interval = setInterval(poll, POLL_MS);
+    refresh();
+
+    // Staff pokes this channel after every reply / claim / close, so updates
+    // land instantly instead of waiting out a poll interval.
+    const channel = supabase
+      .channel(supportApi.supportTicketChannel(ticketCode))
+      .on("broadcast", { event: "update" }, () => refresh())
+      .subscribe();
+    const fallback = setInterval(refresh, FALLBACK_POLL_MS);
+
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearInterval(fallback);
+      supabase.removeChannel(channel);
     };
   }, [open, ticketCode]);
 

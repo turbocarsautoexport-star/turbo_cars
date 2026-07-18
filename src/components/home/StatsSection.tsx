@@ -13,7 +13,9 @@ import BarChart from "../charts/BarChart";
 export default function StatsSection() {
   const stats = useTurboStore((s) => s.stats);
   const auctions = useTurboStore((s) => s.auctions);
-  const now = useTurboStore((s) => s.now);
+  // Charts bucket by day — a fixed timestamp per mount is enough, and it stops
+  // the whole section (both charts) re-rendering every second.
+  const [now] = useState(() => Date.now());
   const mounted = useMounted();
   const endedCount = auctions.filter((a) => a.status === "ended").length;
 
