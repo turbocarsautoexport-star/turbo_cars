@@ -71,24 +71,26 @@ function mapAuction(row: AuctionRow, bids: Bid[]): Auction {
   };
 }
 
+/**
+ * Cap on bids fetched per auction. The UI shows at most ~20 recent bids, so
+ * pulling the full (unbounded) history on every page load only adds payload.
+ * New bids stream in over Realtime afterwards.
+ */
+const BIDS_PER_AUCTION = 30;
+
 export async function getAuctions(supabase: SupabaseClient): Promise<Auction[]> {
-  const [{ data: auctionRows, error: auctionError }, { data: bidRows, error: bidError }] =
-    await Promise.all([
-      supabase.from("auctions").select("*").order("created_at", { ascending: false }),
-      supabase.from("bids").select("*").order("created_at", { ascending: true }),
-    ]);
-  if (auctionError) throw auctionError;
-  if (bidError) throw bidError;
+  const { data, error } = await supabase
+    .from("auctions")
+    .select("*, bids(*)")
+    .order("created_at", { ascending: false })
+    .order("created_at", { referencedTable: "bids", ascending: false })
+    .limit(BIDS_PER_AUCTION, { referencedTable: "bids" });
+  if (error) throw error;
 
-  const bidsByAuction = new Map<string, Bid[]>();
-  for (const row of bidRows as BidRow[]) {
-    const list = bidsByAuction.get(row.auction_id) ?? [];
-    list.push(mapBid(row));
-    bidsByAuction.set(row.auction_id, list);
-  }
-
-  return (auctionRows as AuctionRow[]).map((row) =>
-    mapAuction(row, bidsByAuction.get(row.id) ?? [])
+  return (data as (AuctionRow & { bids: BidRow[] })[]).map((row) =>
+    // Fetched newest-first to make the limit keep recent bids; the app expects
+    // ascending order.
+    mapAuction(row, row.bids.map(mapBid).reverse())
   );
 }
 
@@ -108,10 +110,11 @@ export async function getAuctionBySlug(
     .from("bids")
     .select("*")
     .eq("auction_id", row.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(BIDS_PER_AUCTION);
   if (bidError) throw bidError;
 
-  return mapAuction(row as AuctionRow, (bidRows as BidRow[]).map(mapBid));
+  return mapAuction(row as AuctionRow, (bidRows as BidRow[]).map(mapBid).reverse());
 }
 
 /**

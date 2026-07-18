@@ -1,8 +1,8 @@
 "use client";
 
-import { useTurboStore } from "@/lib/store";
 import { getCountdown, pad2 } from "@/lib/format";
 import { useMounted } from "@/lib/useMounted";
+import { useNow } from "@/lib/useNow";
 
 interface CountdownTimerProps {
   targetMs: number;
@@ -16,7 +16,7 @@ export default function CountdownTimer({
   urgentBelowMinutes = 5,
 }: CountdownTimerProps) {
   const mounted = useMounted();
-  const now = useTurboStore((s) => s.now);
+  const now = useNow();
 
   const sizes = {
     sm: "text-sm gap-1",

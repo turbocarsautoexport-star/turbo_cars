@@ -2,12 +2,13 @@
 
 import { Bid } from "@/lib/types";
 import { formatSom, timeAgo, initials } from "@/lib/format";
-import { useTurboStore } from "@/lib/store";
 import { useMounted } from "@/lib/useMounted";
+import { useNow } from "@/lib/useNow";
 
 export default function LiveBidFeed({ bids, maxItems = 8 }: { bids: Bid[]; maxItems?: number }) {
   const mounted = useMounted();
-  const now = useTurboStore((s) => s.now);
+  // "x soniya oldin" labels only need coarse refreshes, not a 1s re-render.
+  const now = useNow(10_000);
 
   const items = [...bids].reverse().slice(0, maxItems);
 

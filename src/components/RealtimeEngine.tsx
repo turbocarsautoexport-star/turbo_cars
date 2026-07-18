@@ -11,9 +11,14 @@ export default function RealtimeEngine() {
   const upsertAuctionFromRealtime = useTurboStore((s) => s.upsertAuctionFromRealtime);
 
   useEffect(() => {
-    init();
+    // Deferred one tick: server-rendered pages seed the store in their own
+    // mount effects, and this lets them win so we skip a duplicate fetch.
+    const initTimeout = setTimeout(init, 0);
     const tickInterval = setInterval(tick, 1000);
-    return () => clearInterval(tickInterval);
+    return () => {
+      clearTimeout(initTimeout);
+      clearInterval(tickInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
